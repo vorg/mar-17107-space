@@ -74,7 +74,7 @@ function createSpace (w, h) {
     }
     if (space.oneFingerZooming) {
       const delta = Vec2.sub(Vec2.copy(pos), space.prevPos)
-      space.scroll(space.clickPos[0], space.clickPos[1], delta[1])
+      space.scroll(space.clickPos[0], space.clickPos[1], -delta[1])
       space.changed.dispatch(space)
     }
     if (space.pinchZooming) {
