@@ -1,5 +1,6 @@
 const Signal = require('signals')
 const Vec2 = require('pex-math/Vec2')
+const Rect = require('pex-geom/Rect')
 
 // Space is head-less infinite canvas data model / ui interaction implementation
 function createSpace (w, h) {
@@ -30,11 +31,25 @@ function createSpace (w, h) {
   space.down = (x, y, shift, touches) => {
     console.log('down', x, y)
     const pos = [x, y]
+    const posInSpace = space.fromScreenCoords(pos)
     // we will enable one finger zoom on fast double click and drag
     const timeSinceLastClick = Date.now() - space.clickTime
     const distanceFromLastClick = Vec2.distance(pos, space.clickPos)
     console.log('down since', timeSinceLastClick, distanceFromLastClick)
-    if (touches && (touches.length === 2)) {
+
+    // hover / hit test
+    space.items.forEach((item) => { item.selected = false })
+    space.items
+      .filter((item) => (item.background || item.image) && Rect.containsPoint(item.rect, posInSpace))
+      .forEach((item) => { item.selected = true })
+    const selectedItems = space.items.filter((item) => item.selected)
+
+    if (selectedItems.length > 0) {
+      selectedItems.forEach((item) => {
+        item.prevPosition = Vec2.copy(item.position)
+      })
+      space.dragging = true
+    } else if (touches && (touches.length === 2)) {
       console.log('pinch!')
       // Convert touches positions to space coords
       // On the next move convert finger positions to space coords
@@ -64,20 +79,29 @@ function createSpace (w, h) {
 
   space.move = (x, y, shift, touches) => {
     const pos = [x, y]
-    if (space.panning) {
+    const posInSpace = space.fromScreenCoords(pos)
+    if (space.dragging) {
+      const selectedItems = space.items.filter((item) => item.selected)
+      const delta = Vec2.sub(Vec2.copy(pos), space.clickPos)
+      Vec2.scale(delta, 1 / space.scale)
+      selectedItems.forEach((item) => {
+        Vec2.set(item.position, item.prevPosition)
+        Vec2.add(item.position, delta)
+        item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
+      })
+      space.changed.dispatch(space)
+    } else if (space.panning) {
       const delta = Vec2.sub(Vec2.copy(pos), space.clickPos)
       Vec2.scale(delta, 1 / space.scale)
       Vec2.set(space.offset, space.prevOffset)
       Vec2.add(space.offset, delta)
 
       space.changed.dispatch(space)
-    }
-    if (space.oneFingerZooming) {
+    } else if (space.oneFingerZooming) {
       const delta = Vec2.sub(Vec2.copy(pos), space.prevPos)
       space.scroll(space.clickPos[0], space.clickPos[1], -delta[1])
       space.changed.dispatch(space)
-    }
-    if (space.pinchZooming) {
+    } else if (space.pinchZooming) {
       const touchesInSpace = touches.sort((a, b) => a.id - b.id).map((touch) => {
         return { id: touch.id, screenPosition: [touch.x, touch.y], spacePosition: space.fromScreenCoords([touch.x, touch.y]) }
       })
@@ -100,6 +124,12 @@ function createSpace (w, h) {
       Vec2.sub(space.offset, delta)
 
       space.changed.dispatch(space)
+    } else {
+      space.items.forEach((item) => { item.hover = false })
+      space.items
+        .filter((item) => (item.background || item.image) && Rect.containsPoint(item.rect, posInSpace))
+        .forEach((item) => { item.hover = true })
+      space.changed.dispatch(space)
     }
     // prevent one finger zoom to kick in when panning
     space.clickTime = 0
@@ -113,7 +143,9 @@ function createSpace (w, h) {
     space.oneFingerZooming = false
     space.pinchZooming = false
     space.touches = null
+    space.dragging = false
 
+    space.items.forEach((item) => { item.hover = false })
     space.changed.dispatch(space)
   }
 
@@ -217,18 +249,21 @@ space.items.push({
 
 space.items.push({
   position: [-2000, -2000],
+  size: [0, 0],
   scale: 1.1,
   image: 'assets/cover.jpg'
 })
 
 space.items.push({
   position: [500, -3000],
+  size: [0, 0],
   scale: 1.15,
   image: 'assets/example-draw.jpg'
 })
 
 space.items.push({
   position: [3500, -1500],
+  size: [0, 0],
   scale: 1.12,
   image: 'assets/reaction-diffusion.jpg'
 })
@@ -236,9 +271,15 @@ space.items.push({
 space.items.forEach((item) => {
   if (item.image) {
     const img = new window.Image()
+    img.onload = function () {
+      item.size = [img.width, img.height]
+      item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
+    }
     img.src = item.image
     item.image = img
   }
+  item.scale = item.scale || 1
+  item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
 })
 
 const canvas = document.createElement('canvas')
@@ -279,16 +320,22 @@ function redraw () {
       const h = item.size[1] * scale
       ctx.fillStyle = item.background
       ctx.fillRect(x, y, w, h)
-    } else if (item.border) {
-      const w = item.size[0] * scale
-      const h = item.size[1] * scale
-      ctx.strokeStyle = item.border
-      ctx.strokeRect(x, y, w, h)
-    } else if (item.image && item.image.width) {
+    }
+    if (item.image && item.image.width) {
       const w = item.image.width * item.scale * scale
       const h = item.image.height * item.scale * scale
       ctx.drawImage(item.image, x, y, w, h)
     }
+    if (item.border || item.hover) {
+      const w = item.size[0] * scale * item.scale
+      const h = item.size[1] * scale * item.scale
+      ctx.strokeStyle = item.hover ? '#FF0000' : item.border
+      ctx.strokeRect(x, y, w, h)
+    }
+    ctx.strokeStyle = '#00FF00'
+    const from = space.toScreenCoords(item.rect[0])
+    const to = space.toScreenCoords(item.rect[1])
+    ctx.strokeRect(from[0] - 2, from[1] - 2, to[0] - from[0] + 4, to[1] - from[1] + 4)
   })
 
   if (touches) {
