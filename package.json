@@ -1,0 +1,11 @@
+{
+  "name": "space",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "budo index.js:bundle.js --open --live"
+  },
+  "author": "",
+  "license": "MIT"
+}
