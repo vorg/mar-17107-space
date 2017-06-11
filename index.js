@@ -47,8 +47,26 @@ function createSpace (w, h) {
     if (selectedItems.length > 0) {
       selectedItems.forEach((item) => {
         item.prevPosition = Vec2.copy(item.position)
+        item.prevScale = item.scale
       })
       space.dragging = true
+      if (touches && (touches.length === 2)) {
+        console.log('pinch!')
+        // Convert touches positions to space coords
+        // On the next move convert finger positions to space coords
+        // and calculate how much the scale should change to move
+        // old position to the new one
+        // TODO: is the finger order always the
+        // sort just in case, so the order is consistient
+        const touchesInSpace = touches.sort((a, b) => a.id - b.id).map((touch) => {
+          return { id: touch.id, screenPosition: [touch.x, touch.y], spacePosition: space.fromScreenCoords([touch.x, touch.y]) }
+        })
+        space.pinchZooming = true
+        space.oneFingerZooming = false
+        space.panning = false
+        space.oldScale = space.scale
+        space.touches = touchesInSpace
+      }
     } else if (touches && (touches.length === 2)) {
       console.log('pinch!')
       // Convert touches positions to space coords
@@ -82,13 +100,46 @@ function createSpace (w, h) {
     const posInSpace = space.fromScreenCoords(pos)
     if (space.dragging) {
       const selectedItems = space.items.filter((item) => item.selected)
-      const delta = Vec2.sub(Vec2.copy(pos), space.clickPos)
-      Vec2.scale(delta, 1 / space.scale)
-      selectedItems.forEach((item) => {
-        Vec2.set(item.position, item.prevPosition)
-        Vec2.add(item.position, delta)
-        item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
-      })
+      if (space.pinchZooming) {
+        const touchesInSpace = touches.sort((a, b) => a.id - b.id).map((touch) => {
+          return { id: touch.id, screenPosition: [touch.x, touch.y], spacePosition: space.fromScreenCoords([touch.x, touch.y]) }
+        })
+        const prevPosA = space.touches[0].screenPosition
+        const prevPosB = space.touches[1].screenPosition
+        const posA = touchesInSpace[0].screenPosition
+        const posB = touchesInSpace[1].screenPosition
+        const prevCenter = Vec2.scale(Vec2.add(Vec2.copy(prevPosA), prevPosB), 0.5)
+        const center = Vec2.scale(Vec2.add(Vec2.copy(posA), posB), 0.5)
+        const oldDist = Vec2.distance(prevPosA, prevCenter)
+        const dist = Vec2.distance(posA, center)
+        const zoom = dist / oldDist
+        selectedItems.forEach((item) => {
+          item.scale = item.prevScale * zoom
+          const dw = item.size[0] * (item.scale - item.prevScale)
+          const dh = item.size[1] * (item.scale - item.prevScale)
+          Vec2.set(item.position, item.prevPosition)
+          Vec2.sub(item.position, [dw / 2, dh / 2])
+          item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
+        })
+
+        // const zoomPoint = space.fromScreenCoords(prevCenter)
+        // space.scale = space.oldScale * zoom
+        // const driftedMousePos = space.toScreenCoords(zoomPoint)
+
+        // const delta = Vec2.sub(Vec2.copy(driftedMousePos), prevCenter)
+        // Vec2.scale(delta, 1 / space.scale)
+        // Vec2.sub(space.offset, delta)
+
+        // space.changed.dispatch(space)
+      } else {
+        const delta = Vec2.sub(Vec2.copy(pos), space.clickPos)
+        Vec2.scale(delta, 1 / space.scale)
+        selectedItems.forEach((item) => {
+          Vec2.set(item.position, item.prevPosition)
+          Vec2.add(item.position, delta)
+          item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
+        })
+      }
       space.changed.dispatch(space)
     } else if (space.panning) {
       const delta = Vec2.sub(Vec2.copy(pos), space.clickPos)
