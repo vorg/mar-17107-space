@@ -3,6 +3,7 @@ const createSpace = require('./space')
 const registerEvents = require('./events')
 const items = require('./items')
 const renderCanvas = require('./render')
+const ui = require('./ui')
 
 css('tachyons')
 
