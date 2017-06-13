@@ -1,4 +1,5 @@
 function render (ctx, space) {
+  const debug = false
   const W = ctx.canvas.width
   const H = ctx.canvas.height
   // Space is a void with dark background
@@ -23,8 +24,8 @@ function render (ctx, space) {
     const x = dx + item.position[0] * scale
     const y = dy + item.position[1] * scale
     if (item.background) {
-      const w = item.size[0] * scale
-      const h = item.size[1] * scale
+      const w = item.size[0] * item.scale * scale
+      const h = item.size[1] * item.scale * scale
       ctx.fillStyle = item.background
       ctx.fillRect(x, y, w, h)
     }
@@ -33,16 +34,42 @@ function render (ctx, space) {
       const h = item.image.height * item.scale * scale
       ctx.drawImage(item.image, x, y, w, h)
     }
-    if (item.border || item.hover) {
+    if (item.image === null) {
       const w = item.size[0] * scale * item.scale
       const h = item.size[1] * scale * item.scale
-      ctx.strokeStyle = item.hover ? '#FF0000' : item.border
+      ctx.strokeStyle = item.hover ? '#FF0000' : '#FFF'
+      ctx.strokeRect(x, y, w, h)
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + w, y + h)
+      ctx.moveTo(x, y + h)
+      ctx.lineTo(x + w, y)
+      ctx.stroke()
+    }
+    if (item.border) {
+      const w = item.size[0] * scale * item.scale
+      const h = item.size[1] * scale * item.scale
+      ctx.strokeStyle = item.border
       ctx.strokeRect(x, y, w, h)
     }
-    ctx.strokeStyle = '#00FF00'
-    const from = space.toScreenCoords(item.rect[0])
-    const to = space.toScreenCoords(item.rect[1])
-    ctx.strokeRect(from[0] - 2, from[1] - 2, to[0] - from[0] + 4, to[1] - from[1] + 4)
+    if (item.hover) {
+      const w = item.size[0] * scale * item.scale
+      const h = item.size[1] * scale * item.scale
+      ctx.strokeStyle = '#AAA'
+      ctx.strokeRect(x - 2, y - 2, w + 4, h + 4)
+    }
+    if (item.selected) {
+      const w = item.size[0] * scale * item.scale
+      const h = item.size[1] * scale * item.scale
+      ctx.strokeStyle = '#FFF'
+      ctx.strokeRect(x - 2, y - 2, w + 4, h + 4)
+    }
+    if (debug) {
+      ctx.strokeStyle = item.selected ? '#FFFFFF' : '#AAAAAA'
+      const from = space.toScreenCoords(item.rect[0])
+      const to = space.toScreenCoords(item.rect[1])
+      ctx.strokeRect(from[0] - 2, from[1] - 2, to[0] - from[0] + 4, to[1] - from[1] + 4)
+    }
   })
 
   // if (touches) {

@@ -13,6 +13,7 @@ function createSpace (w, h) {
     clickTime: 0,
     prevOffset: [0, 0], // offset before at mouse down moment
     changed: new Signal(),
+    click: new Signal(),
     panning: false,
     oneFingerZooming: false
   }
@@ -39,7 +40,7 @@ function createSpace (w, h) {
     // hover / hit test
     space.items.forEach((item) => { item.selected = false })
     space.items
-      .filter((item) => (item.background || item.image) && Rect.containsPoint(item.rect, posInSpace))
+      .filter((item) => (item.background || (item.image !== undefined)) && Rect.containsPoint(item.rect, posInSpace))
       .forEach((item) => { item.selected = true })
     const selectedItems = space.items.filter((item) => item.selected)
 
@@ -177,7 +178,7 @@ function createSpace (w, h) {
     } else {
       space.items.forEach((item) => { item.hover = false })
       space.items
-        .filter((item) => (item.background || item.image) && Rect.containsPoint(item.rect, posInSpace))
+        .filter((item) => (item.background || (item.image !== undefined)) && Rect.containsPoint(item.rect, posInSpace))
         .forEach((item) => { item.hover = true })
       space.changed.dispatch(space)
     }
@@ -194,6 +195,16 @@ function createSpace (w, h) {
     space.pinchZooming = false
     space.touches = null
     space.dragging = false
+
+    const timeSinceLastClick = Date.now() - space.clickTime
+    // fire click event
+    if (timeSinceLastClick < 200) {
+      const selectedItems = space.items.filter((item) => item.selected)
+      space.click.dispatch({
+        position: space.prevPos,
+        selectedItems: selectedItems
+      })
+    }
 
     space.items.forEach((item) => { item.hover = false })
     space.changed.dispatch(space)
@@ -250,6 +261,17 @@ function createSpace (w, h) {
     // move from space coords to the screen coords
     Vec2.scale(screenPos, space.scale)
     return screenPos
+  }
+
+  // add new item to the space
+  // the position will default to the current offset (center) if not provided
+  space.addItem = (item) => {
+    console.log('adding item', item)
+    if (!item.scale) item.scale = 1
+    item.rect = [item.position, [item.position[0] + item.size[0] * item.scale, item.position[1] + item.size[1] * item.scale]]
+    space.items.push(item)
+    space.changed.dispatch()
+    return item
   }
 
   setTimeout(() => {
