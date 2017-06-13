@@ -274,6 +274,14 @@ function createSpace (w, h) {
     return item
   }
 
+  space.deleteSelectedItems = () => {
+    const selectedItems = space.items.filter((item) => item.selected)
+    selectedItems.forEach((item) => {
+      space.items.splice(space.items.indexOf(item), 1)
+    })
+    space.changed.dispatch(this)
+  }
+
   setTimeout(() => {
     space.changed.dispatch(this)
   }, 1)

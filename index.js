@@ -27,22 +27,29 @@ document.body.appendChild(canvas)
 
 registerEvents(canvas, space)
 
-ui.use(function (state, emit) {
+ui.use(function (state, emitter) {
+  state.space = space
   space.changed.add(() => {
     renderCanvas(ctx, space)
+  })
+
+  emitter.on('delete', () => {
+    space.deleteSelectedItems()
   })
 
   space.click.add((e) => {
     if (state.tool === 'move') return
 
     if (!e.selectedItems.length) {
-      const size = [100 / space.scale, 75 / space.scale]
+      const size = [200, 150]
       const pos = space.fromScreenCoords(e.position)
-      pos[0] -= size[0] / 2
-      pos[1] -= size[1] / 2
+      const scale = 1 / space.scale
+      pos[0] -= size[0] / 2 * scale
+      pos[1] -= size[1] / 2 * scale
       const item = {
         position: pos,
-        size: size
+        size: size,
+        scale: scale
       }
 
       console.log(state.tool)

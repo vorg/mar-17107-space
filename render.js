@@ -29,6 +29,14 @@ function render (ctx, space) {
       ctx.fillStyle = item.background
       ctx.fillRect(x, y, w, h)
     }
+    if (item.text) {
+      ctx.fillStyle = '#FFF'
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.scale(scale * item.scale, scale * item.scale)
+      ctx.fillText(item.text, 5, 5 + 12)
+      ctx.restore()
+    }
     if (item.image && item.image.width) {
       const w = item.image.width * item.scale * scale
       const h = item.image.height * item.scale * scale
@@ -55,13 +63,13 @@ function render (ctx, space) {
     if (item.hover) {
       const w = item.size[0] * scale * item.scale
       const h = item.size[1] * scale * item.scale
-      ctx.strokeStyle = '#AAA'
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)'
       ctx.strokeRect(x - 2, y - 2, w + 4, h + 4)
     }
     if (item.selected) {
       const w = item.size[0] * scale * item.scale
       const h = item.size[1] * scale * item.scale
-      ctx.strokeStyle = '#FFF'
+      ctx.strokeStyle = 'rgba(0, 255, 255, 1)'
       ctx.strokeRect(x - 2, y - 2, w + 4, h + 4)
     }
     if (debug) {
