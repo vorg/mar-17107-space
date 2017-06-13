@@ -10,10 +10,12 @@ function createSpace (w, h) {
     items: [],
     clickPos: [0, 0],
     prevPos: [0, 0],
-    clickTime: 0,
+    mouseDownTime: 0,
+    prevClickTime: 0,
     prevOffset: [0, 0], // offset before at mouse down moment
     changed: new Signal(),
     click: new Signal(),
+    dblclick: new Signal(),
     panning: false,
     oneFingerZooming: false
   }
@@ -33,9 +35,9 @@ function createSpace (w, h) {
     const pos = [x, y]
     const posInSpace = space.fromScreenCoords(pos)
     // we will enable one finger zoom on fast double click and drag
-    const timeSinceLastClick = Date.now() - space.clickTime
+    const timeSinceMouseDown = Date.now() - space.mouseDownTime
     const distanceFromLastClick = Vec2.distance(pos, space.clickPos)
-    console.log('down since', timeSinceLastClick, distanceFromLastClick)
+    console.log('down since', timeSinceMouseDown, distanceFromLastClick)
 
     // hover / hit test
     space.items.forEach((item) => { item.selected = false })
@@ -83,7 +85,7 @@ function createSpace (w, h) {
       space.panning = false
       space.oldScale = space.scale
       space.touches = touchesInSpace
-    } else if (timeSinceLastClick < 500 && distanceFromLastClick < space.size[0] / 10) {
+    } else if (timeSinceMouseDown < 500 && distanceFromLastClick < space.size[0] / 10) {
       space.oneFingerZooming = true
     } else {
       space.panning = true
@@ -91,7 +93,7 @@ function createSpace (w, h) {
     Vec2.set(space.prevOffset, space.offset)
     Vec2.set(space.clickPos, pos)
     Vec2.set(space.prevPos, pos)
-    space.clickTime = Date.now()
+    space.mouseDownTime = Date.now()
     space.changed.dispatch(space)
   }
 
@@ -183,7 +185,7 @@ function createSpace (w, h) {
       space.changed.dispatch(space)
     }
     // prevent one finger zoom to kick in when panning
-    space.clickTime = 0
+    space.mouseDownTime = 0
 
     Vec2.set(space.prevPos, pos)
   }
@@ -196,14 +198,22 @@ function createSpace (w, h) {
     space.touches = null
     space.dragging = false
 
-    const timeSinceLastClick = Date.now() - space.clickTime
+    const timeSinceMouseDown = Date.now() - space.mouseDownTime
     // fire click event
-    if (timeSinceLastClick < 200) {
+    if (timeSinceMouseDown < 200) {
       const selectedItems = space.items.filter((item) => item.selected)
       space.click.dispatch({
         position: space.prevPos,
         selectedItems: selectedItems
       })
+      const timeSinceLastClick = Date.now() - space.prevClickTime
+      if (timeSinceLastClick < 500) {
+        space.dblclick.dispatch({
+          position: space.prevPos,
+          selectedItems: selectedItems
+        })
+      }
+      space.prevClickTime = Date.now()
     }
 
     space.items.forEach((item) => { item.hover = false })

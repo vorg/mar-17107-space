@@ -14,13 +14,19 @@ function model (state, emitter) {
     state.tool = tool
     emitter.emit('render')
   })
-  emitter.on('editing', function (editing) {
-    state.editing = editing
-    if (editing) {
+  emitter.on('editing', function (item) {
+    if (item) {
       setTimeout(() => {
-        document.querySelector('textarea').focus()
-      }, 100)
+        moveCaretToEnd(document.querySelector('textarea'))
+      }, 200)
+    } else {
+      const textarea = document.querySelector('textarea')
+      if (state.editedItem) {
+        state.editedItem.text = textarea.value
+      }
     }
+    state.editedItem = item
+    state.tool = 'move'
     emitter.emit('render')
   })
 }
@@ -30,11 +36,27 @@ function toolButton (state, onClick, icon, toolName, classes) {
   return html`<button onclick=${() => onClick(toolName)} class="${icon} grow mb1 br3 pa3 ba0 bn ${bg} ${classes}"></button>`
 }
 
+function moveCaretToEnd (el) {
+  if (typeof el.selectionStart == 'number') {
+    el.selectionStart = el.selectionEnd = el.value.length
+  } else if (typeof el.createTextRange != 'undefined') {
+    el.focus()
+    var range = el.createTextRange()
+    range.collapse(false)
+    range.select()
+  }
+}
+
 function mainView (state, emit) {
+  const text = state.editedItem ? state.editedItem.text : ''
   return html`
     <div id="ui">
-      <div class="fixed top-0 left-0 w-100 ${state.editing ? 'flex' : 'dn'}">
-        <textarea class="flex-auto pv3 ph2 br0 bn" onblur=${onTextBlur} rows="10"></textarea>
+      <div class="fixed top-0 left-0 w-100 ${state.editedItem ? 'flex' : 'dn'}">
+        <textarea
+          class="flex-auto pv3 ph2 br0 bn"
+          onblur=${onTextBlur}
+          onfocus="this.value = this.value;"
+          rows="10">${text}</textarea>
       </div>
       <div class="fixed bottom-0 left-0 pa3 flex flex-column">
         ${toolButton(state, onDeleteButtonClick, 'ti-trash', 'delete', 'mb3')}

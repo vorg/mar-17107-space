@@ -37,6 +37,15 @@ ui.use(function (state, emitter) {
     space.deleteSelectedItems()
   })
 
+  space.dblclick.add((e) => {
+    if (e.selectedItems.length === 1) {
+      const item = e.selectedItems[0]
+      if (item.text !== undefined) {
+        emitter.emit('editing', item)
+      }
+    }
+  })
+
   space.click.add((e) => {
     if (state.tool === 'move') return
 
