@@ -37,9 +37,9 @@ function toolButton (state, onClick, icon, toolName, classes) {
 }
 
 function moveCaretToEnd (el) {
-  if (typeof el.selectionStart == 'number') {
+  if (typeof el.selectionStart === 'number') {
     el.selectionStart = el.selectionEnd = el.value.length
-  } else if (typeof el.createTextRange != 'undefined') {
+  } else if (typeof el.createTextRange !== 'undefined') {
     el.focus()
     var range = el.createTextRange()
     range.collapse(false)
@@ -59,10 +59,12 @@ function mainView (state, emit) {
           rows="10">${text}</textarea>
       </div>
       <div class="fixed bottom-0 left-0 pa3 flex flex-column">
-        ${toolButton(state, onDeleteButtonClick, 'ti-trash', 'delete', 'mb3')}
+        ${toolButton(state, onDeleteButtonClick, 'ti-trash', 'delete')}
+        ${toolButton(state, onDeleteButtonClick, 'ti-files', 'clone', 'mb3')}
         ${toolButton(state, onToolButtonClick, 'ti-text', 'text')}
         ${toolButton(state, onToolButtonClick, 'ti-image', 'image')}
-        ${toolButton(state, onToolButtonClick, 'ti-layout-width-full', 'rect')}
+        ${toolButton(state, onToolButtonClick, 'ti-layout-width-full', 'rect', 'mb3')}
+        ${toolButton(state, onToolButtonClick, 'ti-layout-sidebar-none', 'select')}
         ${toolButton(state, onToolButtonClick, 'ti-move', 'move')}
       </div>
     </div>
